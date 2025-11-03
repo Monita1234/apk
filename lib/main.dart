@@ -4,6 +4,20 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class AppColors {
+  static const Color background = Color(0xFF0F172A);
+  static const Color surface = Color(0xFF1E293B);
+  static const Color surfaceMuted = Color(0xFF273449);
+  static const Color border = Color(0xFF334155);
+  static const Color primary = Color(0xFF4C6EF5);
+  static const Color secondary = Color(0xFF38BDF8);
+  static const Color success = Color(0xFF34D399);
+  static const Color danger = Color(0xFFF87171);
+  static const Color textPrimary = Color(0xFFE2E8F0);
+  static const Color textSecondary = Color(0xFF94A3B8);
+  static const Color textMuted = Color(0xFF64748B);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppStore.instance.init();
@@ -220,9 +234,67 @@ class MyApp extends StatelessWidget {
     );
     return MaterialApp.router(
       title: 'DJ Alquiler',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-        colorScheme: ColorScheme.dark(primary: Color(0xFFE53935)),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: const ColorScheme(
+          brightness: Brightness.dark,
+          primary: AppColors.primary,
+          onPrimary: AppColors.textPrimary,
+          secondary: AppColors.secondary,
+          onSecondary: AppColors.textPrimary,
+          error: AppColors.danger,
+          onError: AppColors.textPrimary,
+          background: AppColors.background,
+          onBackground: AppColors.textPrimary,
+          surface: AppColors.surface,
+          onSurface: AppColors.textPrimary,
+        ),
+        textTheme: ThemeData.dark().textTheme.apply(
+              bodyColor: AppColors.textPrimary,
+              displayColor: AppColors.textPrimary,
+            ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+          iconTheme: IconThemeData(color: AppColors.textPrimary),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          hintStyle: TextStyle(color: AppColors.textSecondary),
+          filled: true,
+          fillColor: AppColors.surface,
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.border),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.primary),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.danger),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.textPrimary,
+            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.secondary),
+        ),
+        cardColor: AppColors.surface,
+        dividerColor: AppColors.border,
       ),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
@@ -244,56 +316,89 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('DJ ALQUILER', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, fontStyle: FontStyle.italic)),
-              SizedBox(height: 80),
-              TextField(
-                controller: emailCtrl,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Gmail',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'DJ ALQUILER',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: passCtrl,
-                obscureText: true,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Contraseña',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bienvenido de nuevo, ingresa tus datos para continuar',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
-              ),
-              SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                const SizedBox(height: 32),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: passCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Contraseña'),
+                ),
+                const SizedBox(height: 30),
+                ElevatedButton(
                   onPressed: () async {
                     final ok = await AppStore.instance.login(emailCtrl.text.trim(), passCtrl.text.trim());
-                    if (ok && context.mounted) context.go('/home');
-                    else await AppStore.instance.loginInvitado();
+                    if (!ok) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Credenciales inválidas'),
+                          backgroundColor: AppColors.danger,
+                        ),
+                      );
+                      return;
+                    }
                     if (context.mounted) context.go('/home');
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFE53935)),
-                  child: Text('iniciar sesión', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: const Text('Iniciar sesión'),
                 ),
-              ),
-              SizedBox(height: 20),
-              TextButton(
-                onPressed: () => context.go('/registro'),
-                child: Text('Registrar', style: TextStyle(color: Colors.white)),
-              ),
-            ],
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () => context.go('/registro'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                    side: const BorderSide(color: AppColors.secondary),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Crear una cuenta'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () async {
+                    await AppStore.instance.loginInvitado();
+                    if (context.mounted) context.go('/home');
+                  },
+                  child: const Text('Entrar como invitado'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -316,86 +421,87 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    controller: nombreCtrl,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nombres',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Stack(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12)),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Crear cuenta',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    controller: apellidosCtrl,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Apellidos',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Completa tus datos para solicitar equipos de sonido y luces',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    controller: correoCtrl,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'correo',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                    const SizedBox(height: 28),
+                    TextField(
+                      controller: nombreCtrl,
+                      decoration: const InputDecoration(labelText: 'Nombres'),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextField(
-                    controller: passCtrl,
-                    obscureText: true,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Contraeña',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: apellidosCtrl,
+                      decoration: const InputDecoration(labelText: 'Apellidos'),
                     ),
-                  ),
-                  SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: correoCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: passCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: 'Contraseña'),
+                    ),
+                    const SizedBox(height: 30),
+                    ElevatedButton(
                       onPressed: () => context.go('/home'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFE53935)),
-                      child: Text('Registrar', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      child: const Text('Registrarme'),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () => context.go('/'),
-                    child: Text('iniciar sesión', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.go('/'),
+                      child: const Text('Volver a iniciar sesión'),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                  onPressed: () => context.go('/'),
+                ),
+              ),
+            ],
           ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: Text('X', style: TextStyle(color: Colors.white, fontSize: 24)),
-              onPressed: () => context.go('/'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -435,11 +541,11 @@ Future<void> _load() async {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.background,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
             onPressed: () {
               AppStore.instance.logout();
               context.go('/');
@@ -453,14 +559,23 @@ Future<void> _load() async {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: RichText(
-                text: TextSpan(
-                  text: 'Welcome ',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 20, fontWeight: FontWeight.w300),
-                  children: [
-                    TextSpan(text: user.nombre, style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.w600)),
-                  ],
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hola, ${user.nombre}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Explora el catálogo de equipos profesionales',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                ],
               ),
             ),
             Container(
@@ -471,24 +586,14 @@ Future<void> _load() async {
                 itemBuilder: (_, i) => Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: equipos[i].imagenes.isNotEmpty 
- ? Image.asset(
-    equipos[i].imagenes[0],
-    fit: BoxFit.cover,
-    errorBuilder: (_, __, ___) => Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  )
-                        : Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: equipos[i].imagenes.isNotEmpty
+                        ? Image.asset(
+                            equipos[i].imagenes[0],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
+                          )
+                        : Container(color: AppColors.surfaceMuted),
                   ),
                 ),
               ),
@@ -518,25 +623,84 @@ Future<void> _load() async {
                   final equipo = equiposFiltrados[i % equiposFiltrados.length];
                   return GestureDetector(
                     onTap: () => context.go('/detalle/${equipo.id}'),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: equipo.imagenes.isNotEmpty
-                          ? Image.asset(
-                              equipo.imagenes[0],
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[900],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              child: equipo.imagenes.isNotEmpty
+                                  ? Image.asset(
+                                      equipo.imagenes[0],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
+                                    )
+                                  : Container(color: AppColors.surfaceMuted),
                             ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  equipo.nombre,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  equipo.categoria.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '\$${equipo.precioDia}/día',
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: equipo.disponible ? AppColors.success.withOpacity(0.1) : AppColors.danger.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        equipo.disponible ? 'Disponible' : 'No disponible',
+                                        style: TextStyle(
+                                          color: equipo.disponible ? AppColors.success : AppColors.danger,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -546,9 +710,9 @@ Future<void> _load() async {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: Color(0xFFE53935),
-        unselectedItemColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         currentIndex: _selectedIndex,
         onTap: (i) {
           setState(() => _selectedIndex = i);
@@ -571,24 +735,21 @@ Future<void> _load() async {
       child: GestureDetector(
         onTap: () => setState(() => categoriaSeleccionada = cat),
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? Color(0xFFE53935) : Colors.transparent, 
-                width: 3
-              )
-            )
+            color: isSelected ? AppColors.surfaceMuted : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
           ),
           child: Text(
-            cat, 
-            textAlign: TextAlign.center, 
+            cat,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: isSelected ? Color(0xFFE53935) : Colors.grey[500],
+              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               fontSize: 15,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               letterSpacing: 0.5,
-            )
+            ),
           ),
         ),
       ),
@@ -624,10 +785,10 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('Mis Reservas', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.background,
+        title: const Text('Mis Reservas'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFFE53935)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
           onPressed: () => context.go('/home'),
         ),
       ),
@@ -637,10 +798,10 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.event_busy, size: 64, color: Colors.grey[700]),
+                    children: const [
+                      Icon(Icons.event_busy, size: 64, color: AppColors.textMuted),
                       SizedBox(height: 16),
-                      Text('No tienes reservas', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                      Text('No tienes reservas', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
                     ],
                   ),
                 )
@@ -654,9 +815,9 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                       margin: EdgeInsets.only(bottom: 16),
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[800]!),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,25 +832,31 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                                         width: 60,
                                         height: 60,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(width: 60, height: 60, color: Colors.grey[800]),
+                                        errorBuilder: (_, __, ___) => Container(width: 60, height: 60, color: AppColors.surfaceMuted),
                                       )
-                                    : Container(width: 60, height: 60, color: Colors.grey[800]),
+                                    : Container(width: 60, height: 60, color: AppColors.surfaceMuted),
                               ),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(equipo.nombre, style: TextStyle(color: Color(0xFFE53935), fontSize: 16, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      equipo.nombre,
+                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                                    ),
                                     SizedBox(height: 4),
-                                    Text('Estado: ${r.estado}', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                                    Text(
+                                      'Estado: ${r.estado}',
+                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                    ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
                           SizedBox(height: 12),
-                          Divider(color: Colors.grey[800], height: 1),
+                          const Divider(color: AppColors.border, height: 1),
                           SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -697,23 +864,23 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Desde', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                                  Text(DateFormat('dd/MM/yyyy').format(r.inicio), style: TextStyle(color: Colors.white, fontSize: 14)),
+                                  const Text('Desde', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  Text(DateFormat('dd/MM/yyyy').format(r.inicio), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                                 ],
                               ),
-                              Icon(Icons.arrow_forward, color: Colors.grey[600], size: 16),
+                              const Icon(Icons.arrow_forward, color: AppColors.textMuted, size: 16),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Hasta', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                                  Text(DateFormat('dd/MM/yyyy').format(r.fin), style: TextStyle(color: Colors.white, fontSize: 14)),
+                                  const Text('Hasta', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  Text(DateFormat('dd/MM/yyyy').format(r.fin), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                                 ],
                               ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text('Total', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                                  Text('\$${r.totalCOP}', style: TextStyle(color: Color(0xFFE53935), fontSize: 16, fontWeight: FontWeight.bold)),
+                                  const Text('Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  Text('\$${r.totalCOP}', style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ],
@@ -724,9 +891,9 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                   },
                 ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: Color(0xFFE53935),
-        unselectedItemColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         currentIndex: 1,
         onTap: (i) {
           if (i == 0) context.go('/home');
@@ -780,28 +947,27 @@ class _DetailScreenState extends State<DetailScreen> {
             children: [
               Stack(
                 children: [
-                  Container(
+                  SizedBox(
                     height: 280,
                     width: double.infinity,
                     child: e.imagenes.isNotEmpty
                         ? Image.asset(
                             e.imagenes[0],
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              decoration: BoxDecoration(color: Colors.grey[900]),
-                            ),
+                            errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
                           )
-                        : Container(
-                            decoration: BoxDecoration(color: Colors.grey[900]),
-                          ),
+                        : Container(color: AppColors.surfaceMuted),
                   ),
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: IconButton(
-                        icon: Icon(Icons.arrow_back, color: Color(0xFFE53935), size: 28),
+                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 28),
                         onPressed: () => context.go('/home'),
-                        style: IconButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.5)),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surface.withOpacity(0.5),
+                          shape: const CircleBorder(),
+                        ),
                       ),
                     ),
                   ),
@@ -817,21 +983,40 @@ class _DetailScreenState extends State<DetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(e.nombre, style: TextStyle(color: Color(0xFFE53935), fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                            child: Text(
+                              e.nombre,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
                           ),
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[800]!)),
-                            child: Text('4K', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Text('4K', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
-                      SizedBox(height: 12),
-                      Text(e.disponible ? 'Disponible' : 'No disponible', style: TextStyle(color: e.disponible ? Colors.green[400] : Colors.red[400], fontSize: 14, fontWeight: FontWeight.w500)),
-                      SizedBox(height: 20),
-                      Text('cantidad disponible: 10 unidades', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-                      SizedBox(height: 24),
-                      Text('Fechas de reserva', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Text(
+                        e.disponible ? 'Disponible' : 'No disponible',
+                        style: TextStyle(
+                          color: e.disponible ? AppColors.success : AppColors.danger,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text('Cantidad disponible: 10 unidades', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      const SizedBox(height: 24),
+                      const Text('Fechas de reserva', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
                       SizedBox(height: 12),
                       Row(
                         children: [
@@ -850,9 +1035,16 @@ class _DetailScreenState extends State<DetailScreen> {
                                 if (picked != null) setState(() => fechaInicio = picked);
                               },
                               child: Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[800]!)),
-                                child: Text(fechaInicio == null ? 'Fecha inicio' : '${fechaInicio!.day}/${fechaInicio!.month}/${fechaInicio!.year}', style: TextStyle(color: fechaInicio == null ? Colors.grey[600] : Colors.white)),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  fechaInicio == null ? 'Fecha inicio' : DateFormat('dd/MM/yyyy').format(fechaInicio!),
+                                  style: TextStyle(color: fechaInicio == null ? AppColors.textMuted : AppColors.textPrimary),
+                                ),
                               ),
                             ),
                           ),
@@ -872,22 +1064,29 @@ class _DetailScreenState extends State<DetailScreen> {
                                 if (picked != null) setState(() => fechaFin = picked);
                               },
                               child: Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[800]!)),
-                                child: Text(fechaFin == null ? 'Fecha fin' : '${fechaFin!.day}/${fechaFin!.month}/${fechaFin!.year}', style: TextStyle(color: fechaFin == null ? Colors.grey[600] : Colors.white)),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  fechaFin == null ? 'Fecha fin' : DateFormat('dd/MM/yyyy').format(fechaFin!),
+                                  style: TextStyle(color: fechaFin == null ? AppColors.textMuted : AppColors.textPrimary),
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
                       SizedBox(height: 20),
-                      Text('cantidad que necesitas', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      const Text('Cantidad que necesitas', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Colors.grey[700],
-                          inactiveTrackColor: Colors.grey[900],
-                          thumbColor: Colors.grey[400],
-                          overlayColor: Colors.grey[700]!.withOpacity(0.2),
+                          activeTrackColor: AppColors.primary,
+                          inactiveTrackColor: AppColors.border,
+                          thumbColor: AppColors.primary,
+                          overlayColor: AppColors.primary.withOpacity(0.2),
                           thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
                           trackHeight: 3,
                         ),
@@ -900,11 +1099,11 @@ class _DetailScreenState extends State<DetailScreen> {
                           onChanged: (v) => setState(() => cantidadNecesita = v),
                         ),
                       ),
-                      Text('${cantidadNecesita.toInt()} unidades', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-                      SizedBox(height: 24),
-                      Text('Descripcion', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
-                      SizedBox(height: 12),
-                      Text(e.descripcion, style: TextStyle(color: Colors.grey[400], fontSize: 14, height: 1.6, letterSpacing: 0.2)),
+                      Text('${cantidadNecesita.toInt()} unidades', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      const SizedBox(height: 24),
+                      const Text('Descripción', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
+                      const SizedBox(height: 12),
+                      Text(e.descripcion, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6, letterSpacing: 0.2)),
                       SizedBox(height: 120),
                     ],
                   ),
@@ -919,10 +1118,11 @@ class _DetailScreenState extends State<DetailScreen> {
             child: SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: (fechaInicio != null && fechaFin != null) ? () async {
-                  final user = AppStore.instance.currentUser!;
-                  final dias = fechaFin!.difference(fechaInicio!).inDays + 1;
-                  final total = dias * e.precioDia * cantidadNecesita.toInt();
+                onPressed: (fechaInicio != null && fechaFin != null)
+                    ? () async {
+                      final user = AppStore.instance.currentUser!;
+                      final dias = fechaFin!.difference(fechaInicio!).inDays + 1;
+                      final total = dias * e.precioDia * cantidadNecesita.toInt();
                   final r = Reserva(
                     id: DateTime.now().microsecondsSinceEpoch.toString(),
                     equipoId: e.id,
@@ -932,27 +1132,30 @@ class _DetailScreenState extends State<DetailScreen> {
                     estado: 'pendiente',
                     totalCOP: total,
                   );
-                  await AppStore.instance.addReserva(r);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reserva creada')));
-                    context.go('/confirmacion');
-                  }
-                } : null,
+                      await AppStore.instance.addReserva(r);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Reserva creada')),
+                        );
+                        context.go('/confirmacion');
+                      }
+                    }
+                    : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFE53935),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                child: Text('Reserva', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
+                child: const Text('Reservar', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
               ),
             ),
           ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: Color(0xFFE53935),
-        unselectedItemColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         currentIndex: 0,
         onTap: (i) {
           if (i == 0) context.go('/home');
@@ -981,7 +1184,7 @@ class ConfirmacionScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             IconButton(
-              icon: Icon(Icons.arrow_back, color: Color(0xFFE53935)),
+              icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
               onPressed: () => context.go('/home'),
             ),
             Padding(
@@ -995,7 +1198,7 @@ class ConfirmacionScreen extends StatelessWidget {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.grey[900],
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
@@ -1003,44 +1206,44 @@ class ConfirmacionScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Fecha de la reserva', style: TextStyle(color: Colors.grey)),
-                          Text('fecha de entrega', style: TextStyle(color: Colors.grey)),
+                          const Text('Fecha de la reserva', style: TextStyle(color: AppColors.textSecondary)),
+                          const Text('Fecha de entrega', style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ],
                   ),
                   SizedBox(height: 32),
-                  Text('Resumen de la reserva', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Resumen de la reserva', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
                   SizedBox(height: 20),
-                  Text('nombre del usuario', style: TextStyle(color: Colors.grey)),
+                  const Text('Nombre del usuario', style: TextStyle(color: AppColors.textSecondary)),
                   SizedBox(height: 8),
                   Container(
                     padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(4)),
-                    child: Text('Seun', style: TextStyle(color: Colors.white)),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+                    child: const Text('Seun', style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   SizedBox(height: 16),
-                  Text('cantidad', style: TextStyle(color: Colors.grey)),
+                  const Text('Cantidad', style: TextStyle(color: AppColors.textSecondary)),
                   SizedBox(height: 8),
                   Container(
                     padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(4)),
-                    child: Text('1', style: TextStyle(color: Colors.white)),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+                    child: const Text('1', style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   SizedBox(height: 16),
-                  Text('precio unitario', style: TextStyle(color: Colors.grey)),
+                  const Text('Precio unitario', style: TextStyle(color: AppColors.textSecondary)),
                   SizedBox(height: 8),
                   Container(
                     padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(4)),
-                    child: Text('\$40', style: TextStyle(color: Colors.white)),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+                    child: const Text('\$40', style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   SizedBox(height: 32),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('valor total de reserva', style: TextStyle(color: Colors.white)),
-                      Text('\$40.00', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text('Valor total de reserva', style: TextStyle(color: AppColors.textSecondary)),
+                      const Text('\$40.00', style: TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   SizedBox(height: 40),
@@ -1049,8 +1252,7 @@ class ConfirmacionScreen extends StatelessWidget {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () => context.go('/home'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFE53935)),
-                      child: Text('confirmar reserva', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      child: const Text('Confirmar reserva', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],
@@ -1099,10 +1301,10 @@ class _ForoScreenState extends State<ForoScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('Foro', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.background,
+        title: const Text('Foro'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFFE53935)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
           onPressed: () => context.go('/home'),
         ),
       ),
@@ -1115,21 +1317,21 @@ class _ForoScreenState extends State<ForoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Selecciona un producto', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+                  const Text('Selecciona un producto', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   SizedBox(height: 8),
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[900],
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[800]!),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: DropdownButton<String>(
                       value: equipoSeleccionadoId,
                       isExpanded: true,
-                      underline: SizedBox(),
-                      dropdownColor: Colors.grey[900],
-                      style: TextStyle(color: Colors.white),
+                      underline: const SizedBox(),
+                      dropdownColor: AppColors.surface,
+                      style: const TextStyle(color: AppColors.textPrimary),
                       items: equipos.map((e) {
                         return DropdownMenuItem(
                           value: e.id,
@@ -1152,24 +1354,24 @@ class _ForoScreenState extends State<ForoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Escribe tu comentario sobre ${equipoActual.nombre}', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                  Text('Escribe tu comentario sobre ${equipoActual.nombre}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   SizedBox(height: 8),
                   Container(
                     height: 120,
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[900],
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[800]!),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: TextField(
                       controller: txtCtrl,
                       maxLines: 5,
-                      style: TextStyle(color: Colors.white),
+                      style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: 'Tu opinión sobre este producto...',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        hintStyle: const TextStyle(color: AppColors.textMuted),
                       ),
                     ),
                   ),
@@ -1194,10 +1396,10 @@ class _ForoScreenState extends State<ForoScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFFE53935),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text('Enviar comentario', style: TextStyle(color: Colors.white, fontSize: 15)),
+                      child: const Text('Enviar comentario', style: TextStyle(fontSize: 15)),
                     ),
                   ),
                 ],
@@ -1206,13 +1408,13 @@ class _ForoScreenState extends State<ForoScreen> {
           SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Comentarios', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+            child: const Text('Comentarios', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
           ),
           SizedBox(height: 12),
           Expanded(
             child: comentarios.isEmpty
                 ? Center(
-                    child: Text('No hay comentarios aún', style: TextStyle(color: Colors.grey[600])),
+                    child: const Text('No hay comentarios aún', style: TextStyle(color: AppColors.textMuted)),
                   )
                 : ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1224,9 +1426,9 @@ class _ForoScreenState extends State<ForoScreen> {
                         margin: EdgeInsets.only(bottom: 12),
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey[900],
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[800]!),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1239,20 +1441,26 @@ class _ForoScreenState extends State<ForoScreen> {
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[800]),
+                                      errorBuilder: (_, __, ___) => Container(width: 50, height: 50, color: AppColors.surfaceMuted),
                                     )
-                                  : Container(width: 50, height: 50, color: Colors.grey[800]),
+                                  : Container(width: 50, height: 50, color: AppColors.surfaceMuted),
                             ),
                             SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(equipo.nombre, style: TextStyle(color: Color(0xFFE53935), fontSize: 14, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    equipo.nombre,
+                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                                  ),
                                   SizedBox(height: 6),
-                                  Text(c.texto, style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4)),
+                                  Text(c.texto, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
                                   SizedBox(height: 6),
-                                  Text('${c.usuarioId} • ${DateFormat('dd/MM/yyyy HH:mm').format(c.createdAt)}', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                                  Text(
+                                    '${c.usuarioId} • ${DateFormat('dd/MM/yyyy HH:mm').format(c.createdAt)}',
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1265,9 +1473,9 @@ class _ForoScreenState extends State<ForoScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: Color(0xFFE53935),
-        unselectedItemColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         currentIndex: 2,
         onTap: (i) {
           if (i == 0) context.go('/home');
