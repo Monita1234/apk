@@ -1,38 +1,89 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import "package:flutter/material.dart";
+import "package:google_fonts/google_fonts.dart";
+import "package:go_router/go_router.dart";
+import "package:intl/intl.dart";
+import "package:firebase_core/firebase_core.dart";
+import "package:cloud_firestore/cloud_firestore.dart";
+import "firebase_options.dart";
 
 class AppColors {
-  static const Color background = Color(0xFF0F172A);
-  static const Color surface = Color(0xFF1E293B);
-  static const Color surfaceMuted = Color(0xFF273449);
-  static const Color border = Color(0xFF334155);
-  static const Color primary = Color(0xFF4C6EF5);
-  static const Color secondary = Color(0xFF38BDF8);
-  static const Color success = Color(0xFF34D399);
-  static const Color danger = Color(0xFFF87171);
-  static const Color textPrimary = Color(0xFFE2E8F0);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
+  static const Color background = Color(0xFFF6F5FB);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceMuted = Color(0xFFECEBF7);
+  static const Color border = Color(0xFFDCD9EE);
+  static const Color primary = Color(0xFFFF6679);
+  static const Color primaryDark = Color(0xFFE94C66);
+  static const Color secondary = Color(0xFFFF9570);
+  static const Color accent = Color(0xFF8B86A6);
+  static const Color success = Color(0xFF48D2A0);
+  static const Color danger = Color(0xFFFF7A7A);
+  static const Color textPrimary = Color(0xFF2F2A45);
+  static const Color textSecondary = Color(0xFF5F5A7A);
+  static const Color textMuted = Color(0xFF8F8AAA);
+  static const Color chip = Color(0xFFE8E6F9);
+  static const Color chipSelected = Color(0xFFFFD6DD);
+  static const Color featuredStart = Color(0xFFFF7C90);
+  static const Color featuredEnd = Color(0xFFFFB07A);
+}
+
+class AppShadows {
+  static const soft = [
+    BoxShadow(
+      color: Color(0x14000000),
+      blurRadius: 24,
+      offset: Offset(0, 16),
+    ),
+  ];
+}
+
+class AppTypography {
+  static TextStyle get brand =>
+      GoogleFonts.caveat(fontSize: 32, fontWeight: FontWeight.w600, color: AppColors.textPrimary);
+  static TextStyle get headline =>
+      GoogleFonts.quicksand(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary);
+  static TextStyle get subtitle =>
+      GoogleFonts.quicksand(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary);
+  static TextStyle get body =>
+      GoogleFonts.quicksand(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary, height: 1.6);
+  static TextStyle get caption =>
+      GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted);
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Intl.defaultLocale = 'es_CO';
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await AppStore.instance.init();
   runApp(const MyApp());
 }
 
-/// -------------------- DATA MODELS --------------------
+String formatCurrency(int value) {
+  final formatter = NumberFormat.currency(locale: 'es_CO', symbol: '\$ ', decimalDigits: 0);
+  return formatter.format(value).replaceAll('\u00A0', ' ').trim();
+}
+
+String formatDate(DateTime date) => DateFormat('dd/MM/yyyy').format(date);
+
+DateTime _fromFirestoreDate(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is String) return DateTime.parse(value);
+  if (value is DateTime) return value;
+  return DateTime.now();
+}
+
 class Equipo {
-  String id;
-  String nombre;
-  String descripcion;
-  int precioDia;
-  String categoria;
-  List<String> imagenes;
-  bool disponible;
+  final String id;
+  final String nombre;
+  final String descripcion;
+  final int precioDia;
+  final String categoria;
+  final List<String> imagenes;
+  final bool disponible;
+  final double rating;
+  final int reviews;
+  final List<String> tags;
 
   Equipo({
     required this.id,
@@ -42,61 +93,78 @@ class Equipo {
     required this.categoria,
     required this.imagenes,
     required this.disponible,
+    required this.rating,
+    required this.reviews,
+    required this.tags,
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'nombre': nombre,
-    'descripcion': descripcion,
-    'precioDia': precioDia,
-    'categoria': categoria,
-    'imagenes': imagenes,
-    'disponible': disponible,
-  };
+        'id': id,
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'precioDia': precioDia,
+        'categoria': categoria,
+        'imagenes': imagenes,
+        'disponible': disponible,
+        'rating': rating,
+        'reviews': reviews,
+        'tags': tags,
+      };
 
-  factory Equipo.fromMap(Map<String, dynamic> m) => Equipo(
-    id: m['id'],
-    nombre: m['nombre'],
-    descripcion: m['descripcion'],
-    precioDia: m['precioDia'],
-    categoria: m['categoria'],
-    imagenes: List<String>.from(m['imagenes'] ?? []),
-    disponible: m['disponible'] ?? true,
-  );
+  factory Equipo.fromMap(Map<String, dynamic> map) => Equipo(
+        id: map['id'],
+        nombre: map['nombre'],
+        descripcion: map['descripcion'],
+        precioDia: map['precioDia'],
+        categoria: map['categoria'],
+        imagenes: List<String>.from(map['imagenes'] ?? const []),
+        disponible: map['disponible'] ?? true,
+        rating: (map['rating'] ?? 4.8).toDouble(),
+        reviews: map['reviews'] ?? 0,
+        tags: List<String>.from(map['tags'] ?? const []),
+      );
 }
 
 class Comentario {
-  String id;
-  String equipoId;
-  String usuarioId;
-  String texto;
-  DateTime createdAt;
-  Comentario({required this.id, required this.equipoId, required this.usuarioId, required this.texto, required this.createdAt});
+  final String id;
+  final String equipoId;
+  final String usuarioId;
+  final String texto;
+  final DateTime createdAt;
+
+  Comentario({
+    required this.id,
+    required this.equipoId,
+    required this.usuarioId,
+    required this.texto,
+    required this.createdAt,
+  });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'equipoId': equipoId,
-    'usuarioId': usuarioId,
-    'texto': texto,
-    'createdAt': createdAt.toIso8601String(),
-  };
-  factory Comentario.fromMap(Map<String, dynamic> m) => Comentario(
-    id: m['id'],
-    equipoId: m['equipoId'],
-    usuarioId: m['usuarioId'],
-    texto: m['texto'],
-    createdAt: DateTime.parse(m['createdAt']),
-  );
+        'id': id,
+        'equipoId': equipoId,
+        'usuarioId': usuarioId,
+        'texto': texto,
+        'createdAt': Timestamp.fromDate(createdAt),
+      };
+
+  factory Comentario.fromMap(Map<String, dynamic> map) => Comentario(
+        id: map['id'],
+        equipoId: map['equipoId'],
+        usuarioId: map['usuarioId'],
+        texto: map['texto'],
+        createdAt: _fromFirestoreDate(map['createdAt']),
+      );
 }
 
 class Reserva {
-  String id;
-  String equipoId;
-  String usuarioId;
-  DateTime inicio;
-  DateTime fin;
-  String estado;
-  int totalCOP;
+  final String id;
+  final String equipoId;
+  final String usuarioId;
+  final DateTime inicio;
+  final DateTime fin;
+  final String estado;
+  final int totalCOP;
 
   Reserva({
     required this.id,
@@ -109,108 +177,235 @@ class Reserva {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'equipoId': equipoId,
-    'usuarioId': usuarioId,
-    'inicio': inicio.toIso8601String(),
-    'fin': fin.toIso8601String(),
-    'estado': estado,
-    'totalCOP': totalCOP,
-  };
-  factory Reserva.fromMap(Map<String, dynamic> m) => Reserva(
-    id: m['id'],
-    equipoId: m['equipoId'],
-    usuarioId: m['usuarioId'],
-    inicio: DateTime.parse(m['inicio']),
-    fin: DateTime.parse(m['fin']),
-    estado: m['estado'],
-    totalCOP: m['totalCOP'],
-  );
+        'id': id,
+        'equipoId': equipoId,
+        'usuarioId': usuarioId,
+        'inicio': Timestamp.fromDate(inicio),
+        'fin': Timestamp.fromDate(fin),
+        'estado': estado,
+        'totalCOP': totalCOP,
+      };
+
+  factory Reserva.fromMap(Map<String, dynamic> map) => Reserva(
+        id: map['id'],
+        equipoId: map['equipoId'],
+        usuarioId: map['usuarioId'],
+        inicio: _fromFirestoreDate(map['inicio']),
+        fin: _fromFirestoreDate(map['fin']),
+        estado: map['estado'],
+        totalCOP: map['totalCOP'],
+      );
 }
 
 class AppUser {
-  String uid;
-  String email;
-  String nombre;
-  String rol;
-  AppUser({required this.uid, required this.email, required this.nombre, required this.rol});
+  final String uid;
+  final String email;
+  final String nombre;
+  final String rol;
+
+  AppUser({
+    required this.uid,
+    required this.email,
+    required this.nombre,
+    required this.rol,
+  });
 
   Map<String, dynamic> toMap() => {'uid': uid, 'email': email, 'nombre': nombre, 'rol': rol};
-  factory AppUser.fromMap(Map<String, dynamic> m) => AppUser(uid: m['uid'], email: m['email'], nombre: m['nombre'], rol: m['rol']);
+
+  factory AppUser.fromMap(Map<String, dynamic> map) => AppUser(
+        uid: map['uid'],
+        email: map['email'],
+        nombre: map['nombre'],
+        rol: map['rol'],
+      );
 }
 
-/// -------------------- STORE --------------------
 class AppStore {
-  static final AppStore instance = AppStore._();
   AppStore._();
-  SharedPreferences? _prefs;
-  AppUser? currentUser;
+  static final AppStore instance = AppStore._();
 
-Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    if (true) {
+  AppUser? currentUser;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  Future<void> init() async {
+    await _ensureSeed();
+  }
+
+  Future<void> _ensureSeed() async {
+    final existing = await _db.collection('equipos').limit(1).get();
+    if (existing.docs.isEmpty) {
       await _seed();
-      await _prefs!.setBool('seeded', true);
     }
   }
-Future<void> _seed() async {
-    print("🔴 INICIANDO SEED");
 
- final equipos = [
-  Equipo(id: _id(), nombre: 'Consola dj', descripcion: 'dispositivo electrónico diseñado principalmente para jugar videojuegos, aunque también puede tener otras funciones como reproducir contenido multimedia o acceder a servicios en línea', precioDia: 40, categoria: 'consolas', imagenes: ['assets/images/consola.jpg'], disponible: true),
-  Equipo(id: _id(), nombre: 'Tarjetas DJ', descripcion: 'Tarjetas profesionales para control de audio', precioDia: 30, categoria: 'tarimas', imagenes: ['assets/images/tarjetas.jpg'], disponible: true),
-  Equipo(id: _id(), nombre: 'Luces RGB', descripcion: 'Sistema de iluminación profesional', precioDia: 25, categoria: 'luces', imagenes: ['assets/images/luces.jpg'], disponible: false),
-];
-    print("🔴 EQUIPOS CREADOS: ${equipos[0].imagenes[0]}");
+  Future<void> _seed() async {
+    final equipos = [
+      Equipo(
+        id: _id(),
+        nombre: 'Pioneer DJ DDJ-FLX10',
+        descripcion:
+            'Controlador insignia de 4 canales con soporte Stems, pads RGB y doble USB-C para cambios rapidos.',
+        precioDia: 350000,
+        categoria: 'controladores',
+        imagenes: ['assets/images/consola.jpg'],
+        disponible: true,
+        rating: 4.9,
+        reviews: 162,
+        tags: ['4 canales', 'Stems', 'Dual USB'],
+      ),
+      Equipo(
+        id: _id(),
+        nombre: 'QSC K12.2 Parlante Activo',
+        descripcion: 'Parlante activo de 2000 W con cobertura amplia y presets configurables.',
+        precioDia: 220000,
+        categoria: 'audio',
+        imagenes: ['assets/images/luces.jpg'],
+        disponible: true,
+        rating: 4.8,
+        reviews: 98,
+        tags: ['2000 W', 'DSP', 'Road ready'],
+      ),
+      Equipo(
+        id: _id(),
+        nombre: 'JBL SRX828SP Subwoofer',
+        descripcion: 'Subwoofer activo dual de 18 pulgadas con procesamiento digital integrado.',
+        precioDia: 280000,
+        categoria: 'audio',
+        imagenes: ['assets/images/tarjetas.jpg'],
+        disponible: true,
+        rating: 4.7,
+        reviews: 76,
+        tags: ['18"', 'DSP', 'Autocalibracion'],
+      ),
+      Equipo(
+        id: _id(),
+        nombre: 'Booth Acrilico LED',
+        descripcion: 'Cabina modular con iluminacion RGB direccionable para escenarios y sets hibridos.',
+        precioDia: 210000,
+        categoria: 'cabinas',
+        imagenes: ['assets/images/consola.jpg'],
+        disponible: true,
+        rating: 4.8,
+        reviews: 54,
+        tags: ['RGB', 'Modular', 'Plegable'],
+      ),
+      Equipo(
+        id: _id(),
+        nombre: 'Workstation Road Ready RRDJ',
+        descripcion: 'Flight case con ruedas y altura ajustable para controladores premium.',
+        precioDia: 160000,
+        categoria: 'infraestructura',
+        imagenes: ['assets/images/tarjetas.jpg'],
+        disponible: false,
+        rating: 4.6,
+        reviews: 39,
+        tags: ['Plegable', 'Road case', 'Heavy duty'],
+      ),
+      Equipo(
+        id: _id(),
+        nombre: 'Cameo PixBar 650 C PRO',
+        descripcion: 'Barra pixelable RGBWA para washes creativos con modos DMX avanzados.',
+        precioDia: 240000,
+        categoria: 'luces',
+        imagenes: ['assets/images/luces.jpg'],
+        disponible: true,
+        rating: 4.9,
+        reviews: 112,
+        tags: ['Pixel', 'RGBWA', 'Master/Slave'],
+      ),
+    ];
 
-    await _saveList('equipos', equipos.map((e) => e.toMap()).toList());
-    await _saveList('comentarios', []);
-    await _saveList('reservas', []);
+    final comentarios = [
+      Comentario(
+        id: _id(),
+        equipoId: equipos.first.id,
+        usuarioId: 'Crew Medellin',
+        texto: 'Lo usamos en un show hibrido y la mezcla de stems fue impecable.',
+        createdAt: DateTime(2025, 11, 1, 11, 14),
+      ),
+      Comentario(
+        id: _id(),
+        equipoId: equipos[5].id,
+        usuarioId: 'Luz y Sonido',
+        texto: 'La respuesta del pixel mapping fue perfecta con software DMX.',
+        createdAt: DateTime(2025, 11, 2, 5, 34),
+      ),
+    ];
+
+    final batch = _db.batch();
+    for (final equipo in equipos) {
+      batch.set(_db.collection('equipos').doc(equipo.id), equipo.toMap());
+    }
+    for (final comentario in comentarios) {
+      batch.set(_db.collection('comentarios').doc(comentario.id), comentario.toMap());
+    }
+    await batch.commit();
   }
 
   String _id() => DateTime.now().microsecondsSinceEpoch.toString();
-  Future<void> _saveList(String key, List<Map<String, dynamic>> list) async => _prefs!.setString(key, jsonEncode(list));
-  List<Map<String, dynamic>> _getList(String key) {
-    final s = _prefs!.getString(key);
-    if (s == null) return [];
-    return List<Map<String, dynamic>>.from(jsonDecode(s));
-  }
 
   Future<bool> login(String email, String password) async {
     if (email == 'admin@demo.com' && password == 'admin123') {
-      currentUser = AppUser(uid: 'admin', email: email, nombre: 'Seun', rol: 'admin');
+      currentUser = AppUser(uid: 'admin', email: email, nombre: 'Aurora Crew', rol: 'admin');
       return true;
     }
     return false;
   }
-  
-  Future<void> loginInvitado() async {
-    currentUser = AppUser(uid: _id(), email: 'invitado@demo.com', nombre: 'Seun', rol: 'cliente');
-  }
-  
-  void logout() { currentUser = null; }
 
-  Future<List<Equipo>> getEquipos() async => _getList('equipos').map(Equipo.fromMap).toList();
-  
-  Future<List<Comentario>> getComentarios(String equipoId) async {
-    final all = _getList('comentarios').map(Comentario.fromMap).toList();
-    return all.where((c)=>c.equipoId==equipoId).toList();
+  Future<void> loginInvitado() async {
+    currentUser = AppUser(uid: _id(), email: 'invitado@demo.com', nombre: 'Invitado', rol: 'cliente');
   }
-  
-  Future<void> addComentario(Comentario c) async {
-    final list = _getList('comentarios'); list.add(c.toMap()); await _saveList('comentarios', list);
+
+  void logout() {
+    currentUser = null;
+  }
+
+  Future<List<Equipo>> getEquipos() async {
+    final snapshot = await _db.collection('equipos').orderBy('nombre').get();
+    return snapshot.docs
+        .map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['id'] = doc.id;
+          return Equipo.fromMap(data);
+        })
+        .toList();
+  }
+
+  Future<List<Comentario>> getComentarios(String equipoId) async {
+    final snapshot = await _db
+        .collection('comentarios')
+        .where('equipoId', isEqualTo: equipoId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs.map((doc) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['id'] = doc.id;
+      return Comentario.fromMap(data);
+    }).toList();
+  }
+
+  Future<void> addComentario(Comentario comentario) async {
+    await _db.collection('comentarios').doc(comentario.id).set(comentario.toMap());
   }
 
   Future<List<Reserva>> getReservasByUser(String uid) async {
-    return _getList('reservas').map(Reserva.fromMap).where((r)=>r.usuarioId==uid).toList();
+    final snapshot = await _db
+        .collection('reservas')
+        .where('usuarioId', isEqualTo: uid)
+        .orderBy('inicio', descending: true)
+        .get();
+    return snapshot.docs.map((doc) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['id'] = doc.id;
+      return Reserva.fromMap(data);
+    }).toList();
   }
 
-  Future<void> addReserva(Reserva r) async {
-    final list = _getList('reservas'); list.add(r.toMap()); await _saveList('reservas', list);
+  Future<void> addReserva(Reserva reserva) async {
+    await _db.collection('reservas').doc(reserva.id).set(reserva.toMap());
   }
 }
 
-/// -------------------- APP --------------------
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -218,187 +413,89 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = GoRouter(
       routes: [
-        GoRoute(path: '/', builder: (_, __) => const LoginScreen()),
+        GoRoute(path: '/', builder: (_, __) => const WelcomeScreen()),
+        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
         GoRoute(path: '/registro', builder: (_, __) => const RegistroScreen()),
         GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-        GoRoute(path: '/detalle/:id', builder: (_, s) => DetailScreen(id: s.pathParameters['id']!)),
+        GoRoute(path: '/detalle/:id', builder: (_, state) => DetailScreen(id: state.pathParameters['id']!)),
         GoRoute(path: '/confirmacion', builder: (_, __) => const ConfirmacionScreen()),
         GoRoute(path: '/mis-reservas', builder: (_, __) => const MisReservasScreen()),
         GoRoute(path: '/foro', builder: (_, __) => const ForoScreen()),
       ],
-      redirect: (ctx, st) {
+      redirect: (context, state) {
         final logged = AppStore.instance.currentUser != null;
-        if (!logged && st.fullPath != '/' && st.fullPath != '/registro') return '/';
+        final visitingAuth = state.fullPath == '/' || state.fullPath == '/registro' || state.fullPath == '/login';
+        if (!logged && !visitingAuth) return '/';
+        if (logged && (state.fullPath == '/' || state.fullPath == '/login' || state.fullPath == '/registro')) {
+          return '/home';
+        }
         return null;
       },
     );
+
     return MaterialApp.router(
-      title: 'DJ Alquiler',
+      title: 'AuroraPulse Play',
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
       theme: ThemeData(
-        brightness: Brightness.dark,
+        useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
-        colorScheme: const ColorScheme(
-          brightness: Brightness.dark,
+        colorScheme: const ColorScheme.light(
           primary: AppColors.primary,
-          onPrimary: AppColors.textPrimary,
+          onPrimary: Colors.white,
           secondary: AppColors.secondary,
-          onSecondary: AppColors.textPrimary,
-          error: AppColors.danger,
-          onError: AppColors.textPrimary,
-          background: AppColors.background,
-          onBackground: AppColors.textPrimary,
+          onSecondary: Colors.white,
           surface: AppColors.surface,
           onSurface: AppColors.textPrimary,
         ),
-        textTheme: ThemeData.dark().textTheme.apply(
-              bodyColor: AppColors.textPrimary,
-              displayColor: AppColors.textPrimary,
-            ),
+        textTheme: GoogleFonts.quicksandTextTheme().apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.transparent,
           elevation: 0,
+          iconTheme: IconThemeData(color: AppColors.textSecondary),
           titleTextStyle: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
-          iconTheme: IconThemeData(color: AppColors.textPrimary),
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          hintStyle: TextStyle(color: AppColors.textSecondary),
+        inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.border),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: AppColors.border),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.primary),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: AppColors.primary),
           ),
-          errorBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.danger),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
+          hintStyle: const TextStyle(color: AppColors.textMuted),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.textPrimary,
-            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            elevation: 0,
           ),
         ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: AppColors.secondary),
-        ),
-        cardColor: AppColors.surface,
-        dividerColor: AppColors.border,
-      ),
-      routerConfig: router,
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-/// -------------------- LOGIN --------------------
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-  @override State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12)),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'DJ ALQUILER',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Bienvenido de nuevo, ingresa tus datos para continuar',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 32),
-                TextField(
-                  controller: emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Correo electrónico'),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
-                ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () async {
-                    final ok = await AppStore.instance.login(emailCtrl.text.trim(), passCtrl.text.trim());
-                    if (!ok) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Credenciales inválidas'),
-                          backgroundColor: AppColors.danger,
-                        ),
-                      );
-                      return;
-                    }
-                    if (context.mounted) context.go('/home');
-                  },
-                  child: const Text('Iniciar sesión'),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: () => context.go('/registro'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.secondary,
-                    side: const BorderSide(color: AppColors.secondary),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Crear una cuenta'),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () async {
-                    await AppStore.instance.loginInvitado();
-                    if (context.mounted) context.go('/home');
-                  },
-                  child: const Text('Entrar como invitado'),
-                ),
-              ],
-            ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
       ),
@@ -406,98 +503,65 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// -------------------- REGISTRO --------------------
-class RegistroScreen extends StatefulWidget {
-  const RegistroScreen({super.key});
-  @override State<RegistroScreen> createState() => _RegistroScreenState();
-}
-
-class _RegistroScreenState extends State<RegistroScreen> {
-  final nombreCtrl = TextEditingController();
-  final apellidosCtrl = TextEditingController();
-  final correoCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Stack(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
             children: [
+              const SizedBox(height: 12),
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+                width: 120,
+                height: 120,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12)),
-                  ],
+                  gradient: const LinearGradient(
+                    colors: [AppColors.featuredStart, AppColors.featuredEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(60),
+                  boxShadow: AppShadows.soft,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Crear cuenta',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Completa tus datos para solicitar equipos de sonido y luces',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 28),
-                    TextField(
-                      controller: nombreCtrl,
-                      decoration: const InputDecoration(labelText: 'Nombres'),
-                    ),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: apellidosCtrl,
-                      decoration: const InputDecoration(labelText: 'Apellidos'),
-                    ),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: correoCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(labelText: 'Correo electrónico'),
-                    ),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: passCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Contraseña'),
-                    ),
-                    const SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: () => context.go('/home'),
-                      child: const Text('Registrarme'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => context.go('/'),
-                      child: const Text('Volver a iniciar sesión'),
-                    ),
-                  ],
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 48),
+              ),
+              const SizedBox(height: 24),
+              Text('AuroraPulse Play', style: AppTypography.brand),
+              const SizedBox(height: 8),
+              Text(
+                'Bienvenido a tu plataforma para reservar audio, luces, cabinas e infraestructura profesional sin complicaciones.',
+                textAlign: TextAlign.center,
+                style: AppTypography.body,
+              ),
+              const SizedBox(height: 32),
+              const _GuideCard(),
+              const SizedBox(height: 36),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.go('/registro'),
+                  child: const Text('Crear cuenta'),
                 ),
               ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
-                  onPressed: () => context.go('/'),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Iniciar sesion'),
                 ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () async {
+                  await AppStore.instance.loginInvitado();
+                  if (context.mounted) context.go('/home');
+                },
+                child: const Text('Ingresar como invitado'),
               ),
             ],
           ),
@@ -507,248 +571,221 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 }
 
-/// -------------------- HOME --------------------
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-  @override State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  List<Equipo> equipos = [];
-  String categoriaSeleccionada = 'consolas';
-  int _selectedIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-Future<void> _load() async {
-  equipos = await AppStore.instance.getEquipos();
-  print("🟢 EQUIPOS CARGADOS EN HOME: ${equipos.length}");
-  if (equipos.isNotEmpty) {
-    print("🟢 PRIMER EQUIPO: ${equipos[0].nombre}");
-    print("🟢 IMAGEN PRIMER EQUIPO: ${equipos[0].imagenes.isNotEmpty ? equipos[0].imagenes[0] : 'VACIO'}");
-  }
-  setState(() {});
-}
+class _GuideCard extends StatelessWidget {
+  const _GuideCard();
 
   @override
   Widget build(BuildContext context) {
-    final user = AppStore.instance.currentUser!;
-    final equiposFiltrados = equipos.where((e) => e.categoria == categoriaSeleccionada).toList();
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
-            onPressed: () {
-              AppStore.instance.logout();
-              context.go('/');
-            },
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: AppShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Text('Guia rapida', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hola, ${user.nombre}',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Explora el catálogo de equipos profesionales',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              height: 220,
-              margin: EdgeInsets.only(bottom: 20),
-              child: PageView.builder(
-                itemCount: equipos.length,
-                itemBuilder: (_, i) => Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: equipos[i].imagenes.isNotEmpty
-                        ? Image.asset(
-                            equipos[i].imagenes[0],
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
-                          )
-                        : Container(color: AppColors.surfaceMuted),
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  _buildTab('consolas'),
-                  _buildTab('tarimas'),
-                  _buildTab('luces'),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            Expanded(
-              child: GridView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, 
-                  crossAxisSpacing: 12, 
-                  mainAxisSpacing: 12, 
-                  childAspectRatio: 0.95
-                ),
-                itemCount: equiposFiltrados.length >= 2 ? 4 : equiposFiltrados.length,
-                itemBuilder: (_, i) {
-                  final equipo = equiposFiltrados[i % equiposFiltrados.length];
-                  return GestureDetector(
-                    onTap: () => context.go('/detalle/${equipo.id}'),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                              child: equipo.imagenes.isNotEmpty
-                                  ? Image.asset(
-                                      equipo.imagenes[0],
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
-                                    )
-                                  : Container(color: AppColors.surfaceMuted),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  equipo.nombre,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  equipo.categoria.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 11,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '\$${equipo.precioDia}/día',
-                                      style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: equipo.disponible ? AppColors.success.withOpacity(0.1) : AppColors.danger.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        equipo.disponible ? 'Disponible' : 'No disponible',
-                                        style: TextStyle(
-                                          color: equipo.disponible ? AppColors.success : AppColors.danger,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        currentIndex: _selectedIndex,
-        onTap: (i) {
-          setState(() => _selectedIndex = i);
-          if (i == 0) {}
-          if (i == 1) context.go('/mis-reservas');
-          if (i == 2) context.go('/foro');
-        },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.event_note), label: 'Mis Reservas'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'foro'),
+          const SizedBox(height: 20),
+          Text(
+            'Tu centro de reservas en un solo lugar',
+            style: GoogleFonts.quicksand(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Selecciona la categoria que necesitas, revisa la ficha tecnica y agenda transporte, montaje y acompanamiento.',
+            style: AppTypography.body,
+          ),
+          const SizedBox(height: 28),
+          const _GuideListItem(label: 'Audio profesional'),
+          const SizedBox(height: 18),
+          const _GuideListItem(label: 'Luces y visuales'),
+          const SizedBox(height: 18),
+          const _GuideListItem(label: 'Infraestructura'),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTab(String cat) {
-    final isSelected = cat == categoriaSeleccionada;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => categoriaSeleccionada = cat),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+class _GuideListItem extends StatelessWidget {
+  final String label;
+  const _GuideListItem({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.surfaceMuted : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+            gradient: const LinearGradient(
+              colors: [AppColors.featuredStart, AppColors.featuredEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: AppShadows.soft,
           ),
-          child: Text(
-            cat,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-              fontSize: 15,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              letterSpacing: 0.5,
+          child: const Icon(Icons.check, color: Colors.white, size: 22),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          label,
+          style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        ),
+      ],
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+  bool loading = false;
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    setState(() => loading = true);
+    final ok = await AppStore.instance.login(emailCtrl.text.trim(), passCtrl.text.trim());
+    setState(() => loading = false);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Credenciales no validas')),
+      );
+      return;
+    }
+    if (mounted) context.go('/home');
+  }
+
+  Future<void> _enterAsGuest() async {
+    await AppStore.instance.loginInvitado();
+    if (mounted) context.go('/home');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: () => context.go('/'),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.featuredStart, AppColors.featuredEnd],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(48),
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Colors.white, size: 42),
+                  ),
+                  const SizedBox(height: 18),
+                  Text('Hola de nuevo', style: AppTypography.brand),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ingresa tus credenciales para seguir gestionando tus reservas.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body,
+                  ),
+                  const SizedBox(height: 28),
+                  Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceMuted,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: const Text('Uso interno AuroraPulse', style: TextStyle(color: AppColors.accent)),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(labelText: 'Correo'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: passCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(labelText: 'Contrasena'),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: loading ? null : _login,
+                          child: loading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Text('Ingresar ahora'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => context.go('/registro'),
+                          child: const Text('Crear cuenta'),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: loading ? null : _enterAsGuest,
+                          child: const Text('Entrar como invitado'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -757,15 +794,134 @@ Future<void> _load() async {
   }
 }
 
-/// -------------------- MIS RESERVAS --------------------
-class MisReservasScreen extends StatefulWidget {
-  const MisReservasScreen({super.key});
-  @override State<MisReservasScreen> createState() => _MisReservasScreenState();
+class RegistroScreen extends StatefulWidget {
+  const RegistroScreen({super.key});
+
+  @override
+  State<RegistroScreen> createState() => _RegistroScreenState();
 }
 
-class _MisReservasScreenState extends State<MisReservasScreen> {
-  List<Reserva> reservas = [];
+class _RegistroScreenState extends State<RegistroScreen> {
+  final nombreCtrl = TextEditingController();
+  final correoCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    nombreCtrl.dispose();
+    correoCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: () => context.go('/'),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.featuredStart, AppColors.featuredEnd],
+                        begin: Alignment.bottomLeft,
+                        end: Alignment.topRight,
+                      ),
+                      borderRadius: BorderRadius.circular(48),
+                    ),
+                    child: const Icon(Icons.bolt, color: Colors.white, size: 42),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Configura tu crew', style: AppTypography.brand),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Crea un perfil para reservar, gestionar inventario y coordinar tu equipo tecnico.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body,
+                  ),
+                  const SizedBox(height: 28),
+                  Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: nombreCtrl,
+                          decoration: const InputDecoration(labelText: 'Nombre del crew o artista'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: correoCtrl,
+                          decoration: const InputDecoration(labelText: 'Correo principal'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: passCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(labelText: 'Crea una contrasena'),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () => context.go('/home'),
+                          child: const Text('Crear cuenta AuroraPulse'),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () => context.go('/'),
+                          child: const Text('Ya tengo cuenta'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () async {
+                            await AppStore.instance.loginInvitado();
+                            if (mounted) context.go('/home');
+                          },
+                          child: const Text('Solo quiero explorar por ahora'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final PageController _heroController = PageController(viewportFraction: 0.88);
+  final List<String> categorias = const ['todos', 'audio', 'cabinas', 'controladores', 'luces', 'infraestructura'];
   List<Equipo> equipos = [];
+  String categoriaSeleccionada = 'todos';
   bool loading = true;
 
   @override
@@ -775,484 +931,288 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
   }
 
   Future<void> _load() async {
-    final user = AppStore.instance.currentUser!;
-    reservas = await AppStore.instance.getReservasByUser(user.uid);
     equipos = await AppStore.instance.getEquipos();
-    setState(() => loading = false);
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  void dispose() {
+    _heroController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: const Text('Mis Reservas'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
-          onPressed: () => context.go('/home'),
-        ),
-      ),
-      body: loading
-          ? Center(child: CircularProgressIndicator())
-          : reservas.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.event_busy, size: 64, color: AppColors.textMuted),
-                      SizedBox(height: 16),
-                      Text('No tienes reservas', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.all(20),
-                  itemCount: reservas.length,
-                  itemBuilder: (_, i) {
-                    final r = reservas[i];
-                    final equipo = equipos.firstWhere((e) => e.id == r.equipoId, orElse: () => Equipo(id: '', nombre: 'Equipo', descripcion: '', precioDia: 0, categoria: '', imagenes: [], disponible: false));
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 16),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: equipo.imagenes.isNotEmpty
-                                    ? Image.asset(
-                                        equipo.imagenes[0],
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(width: 60, height: 60, color: AppColors.surfaceMuted),
-                                      )
-                                    : Container(width: 60, height: 60, color: AppColors.surfaceMuted),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      equipo.nombre,
-                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Estado: ${r.estado}',
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          const Divider(color: AppColors.border, height: 1),
-                          SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Desde', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  Text(DateFormat('dd/MM/yyyy').format(r.inicio), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                                ],
-                              ),
-                              const Icon(Icons.arrow_forward, color: AppColors.textMuted, size: 16),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Hasta', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  Text(DateFormat('dd/MM/yyyy').format(r.fin), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text('Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  Text('\$${r.totalCOP}', style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        currentIndex: 1,
-        onTap: (i) {
-          if (i == 0) context.go('/home');
-          if (i == 2) context.go('/foro');
-        },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.event_note), label: 'Mis Reservas'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'foro'),
-        ],
-      ),
-    );
-  }
-}
+    final user = AppStore.instance.currentUser!;
+    final destacados = equipos.take(5).toList();
+    final filtrados = categoriaSeleccionada == 'todos'
+        ? equipos
+        : equipos.where((e) => e.categoria == categoriaSeleccionada).toList();
 
-/// -------------------- DETALLE --------------------
-class DetailScreen extends StatefulWidget {
-  final String id;
-  const DetailScreen({super.key, required this.id});
-  @override State<DetailScreen> createState() => _DetailScreenState();
-}
-
-class _DetailScreenState extends State<DetailScreen> {
-  Equipo? equipo;
-  double cantidadNecesita = 1;
-  DateTime? fechaInicio;
-  DateTime? fechaFin;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final list = await AppStore.instance.getEquipos();
-    equipo = list.firstWhere((e) => e.id == widget.id);
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (equipo == null) return Scaffold(body: Center(child: CircularProgressIndicator()));
-    final e = equipo!;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  SizedBox(
-                    height: 280,
-                    width: double.infinity,
-                    child: e.imagenes.isNotEmpty
-                        ? Image.asset(
-                            e.imagenes[0],
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
-                          )
-                        : Container(color: AppColors.surfaceMuted),
-                  ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 28),
-                        onPressed: () => context.go('/home'),
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.surface.withOpacity(0.5),
-                          shape: const CircleBorder(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              e.nombre,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Text('4K', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        e.disponible ? 'Disponible' : 'No disponible',
-                        style: TextStyle(
-                          color: e.disponible ? AppColors.success : AppColors.danger,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text('Cantidad disponible: 10 unidades', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                      const SizedBox(height: 24),
-                      const Text('Fechas de reserva', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context, 
-                                  initialDate: DateTime.now(), 
-                                  firstDate: DateTime.now(), 
-                                  lastDate: DateTime.now().add(Duration(days: 365)),
-                                  builder: (context, child) {
-                                    return Theme(data: ThemeData.dark(), child: child!);
-                                  },
-                                );
-                                if (picked != null) setState(() => fechaInicio = picked);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  fechaInicio == null ? 'Fecha inicio' : DateFormat('dd/MM/yyyy').format(fechaInicio!),
-                                  style: TextStyle(color: fechaInicio == null ? AppColors.textMuted : AppColors.textPrimary),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context, 
-                                  initialDate: fechaInicio ?? DateTime.now(), 
-                                  firstDate: fechaInicio ?? DateTime.now(), 
-                                  lastDate: DateTime.now().add(Duration(days: 365)),
-                                  builder: (context, child) {
-                                    return Theme(data: ThemeData.dark(), child: child!);
-                                  },
-                                );
-                                if (picked != null) setState(() => fechaFin = picked);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  fechaFin == null ? 'Fecha fin' : DateFormat('dd/MM/yyyy').format(fechaFin!),
-                                  style: TextStyle(color: fechaFin == null ? AppColors.textMuted : AppColors.textPrimary),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      const Text('Cantidad que necesitas', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: AppColors.primary,
-                          inactiveTrackColor: AppColors.border,
-                          thumbColor: AppColors.primary,
-                          overlayColor: AppColors.primary.withOpacity(0.2),
-                          thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
-                          trackHeight: 3,
-                        ),
-                        child: Slider(
-                          value: cantidadNecesita,
-                          min: 1,
-                          max: 10,
-                          divisions: 9,
-                          label: cantidadNecesita.toInt().toString(),
-                          onChanged: (v) => setState(() => cantidadNecesita = v),
-                        ),
-                      ),
-                      Text('${cantidadNecesita.toInt()} unidades', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                      const SizedBox(height: 24),
-                      const Text('Descripción', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
-                      const SizedBox(height: 12),
-                      Text(e.descripcion, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6, letterSpacing: 0.2)),
-                      SizedBox(height: 120),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 80,
-            left: 20,
-            right: 20,
-            child: SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: (fechaInicio != null && fechaFin != null)
-                    ? () async {
-                      final user = AppStore.instance.currentUser!;
-                      final dias = fechaFin!.difference(fechaInicio!).inDays + 1;
-                      final total = dias * e.precioDia * cantidadNecesita.toInt();
-                  final r = Reserva(
-                    id: DateTime.now().microsecondsSinceEpoch.toString(),
-                    equipoId: e.id,
-                    usuarioId: user.uid,
-                    inicio: fechaInicio!,
-                    fin: fechaFin!,
-                    estado: 'pendiente',
-                    totalCOP: total,
-                  );
-                      await AppStore.instance.addReserva(r);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reserva creada')),
-                        );
-                        context.go('/confirmacion');
-                      }
-                    }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text('Reservar', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        currentIndex: 0,
-        onTap: (i) {
-          if (i == 0) context.go('/home');
-          if (i == 1) context.go('/mis-reservas');
-          if (i == 2) context.go('/foro');
-        },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.event_note), label: 'Mis Reservas'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'foro'),
-        ],
-      ),
-    );
-  }
-}
-
-/// -------------------- CONFIRMACION --------------------
-class ConfirmacionScreen extends StatelessWidget {
-  const ConfirmacionScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _GreetingHeader(
+                      user: user,
+                      onLogout: () {
+                        AppStore.instance.logout();
+                        context.go('/');
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _buildFeatured(destacados),
+                    const SizedBox(height: 28),
+                    _SectionHeader(
+                      title: 'Categorias',
+                      actionLabel: 'Ver todas',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCategorias(),
+                    const SizedBox(height: 28),
+                    _SectionHeader(
+                      title: 'Top del momento',
+                      actionLabel: 'Ver catalogo completo',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 16),
+                    filtrados.isEmpty
+                        ? const _EmptyListMessage(text: 'No hay productos en esta categoria.')
+                        : SizedBox(
+                            height: 220,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: filtrados.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 16),
+                              itemBuilder: (context, index) {
+                                final equipo = filtrados[index];
+                                return _EquipmentCard(
+                                  equipo: equipo,
+                                  onTap: () => context.go('/detalle/${equipo.id}'),
+                                );
+                              },
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+      ),
+      bottomNavigationBar: AuroraNavBar(
+        currentIndex: 0,
+        onTap: (index) {
+          if (index == 1) context.go('/mis-reservas');
+          if (index == 2) context.go('/foro');
+        },
+      ),
+    );
+  }
+
+  Widget _buildFeatured(List<Equipo> destacados) {
+    if (destacados.isEmpty) {
+      return const _EmptyListMessage(text: 'Sin destacados por ahora.');
+    }
+    return SizedBox(
+      height: 240,
+      child: PageView.builder(
+        controller: _heroController,
+        itemCount: destacados.length,
+        itemBuilder: (context, index) {
+          final Equipo equipo = destacados[index];
+          return Padding(
+            padding: EdgeInsets.only(right: index == destacados.length - 1 ? 0 : 12),
+            child: _FeaturedCard(
+              equipo: equipo,
+              onTap: () => context.go('/detalle/${equipo.id}'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategorias() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categorias.map((cat) {
+          final selected = cat == categoriaSeleccionada;
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _CategoryChip(
+              label: cat.toUpperCase(),
+              selected: selected,
+              onTap: () => setState(() => categoriaSeleccionada = cat),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  const _CircleIconButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: AppColors.textSecondary),
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        shape: const CircleBorder(),
+        padding: const EdgeInsets.all(12),
+      ),
+    );
+  }
+}
+
+class _GreetingHeader extends StatelessWidget {
+  final AppUser user;
+  final VoidCallback onLogout;
+  const _GreetingHeader({required this.user, required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Hola, ${user.nombre}', style: AppTypography.headline),
+              const SizedBox(height: 4),
+              Text('Gestiona tu set para hoy', style: AppTypography.subtitle),
+            ],
+          ),
+        ),
+        Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
-              onPressed: () => context.go('/home'),
+            _CircleIconButton(
+              icon: Icons.chat_bubble_outline,
+              onPressed: () {},
+            ),
+            const SizedBox(width: 10),
+            _CircleIconButton(
+              icon: Icons.ios_share_outlined,
+              onPressed: () {},
+            ),
+            const SizedBox(width: 10),
+            _CircleIconButton(
+              icon: Icons.logout,
+              onPressed: onLogout,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  final Equipo equipo;
+  final VoidCallback onTap;
+  const _FeaturedCard({required this.equipo, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3B3F61), Color(0xFF212338)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: AppShadows.soft,
+        ),
+        child: Stack(
+          children: [
+            if (equipo.imagenes.isNotEmpty)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    equipo.imagenes.first,
+                    fit: BoxFit.cover,
+                    color: Colors.black.withOpacity(0.35),
+                    colorBlendMode: BlendMode.darken,
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: AppColors.featuredStart.withOpacity(0.2)),
+                  ),
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  colors: [Colors.black.withOpacity(0.15), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                      _HeroPill(
+                        label: equipo.categoria.toUpperCase(),
+                        icon: Icons.blur_on,
                       ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Fecha de la reserva', style: TextStyle(color: AppColors.textSecondary)),
-                          const Text('Fecha de entrega', style: TextStyle(color: AppColors.textSecondary)),
-                        ],
+                      _HeroPill(
+                        label:
+                            '${equipo.rating.toStringAsFixed(1)} | ${equipo.reviews} resenas',
+                        icon: Icons.star_border_rounded,
                       ),
                     ],
                   ),
-                  SizedBox(height: 32),
-                  const Text('Resumen de la reserva', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 20),
-                  const Text('Nombre del usuario', style: TextStyle(color: AppColors.textSecondary)),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-                    child: const Text('Seun', style: TextStyle(color: AppColors.textPrimary)),
+                  const Spacer(),
+                  Text(
+                    equipo.nombre,
+                    style: GoogleFonts.quicksand(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  const Text('Cantidad', style: TextStyle(color: AppColors.textSecondary)),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-                    child: const Text('1', style: TextStyle(color: AppColors.textPrimary)),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${formatCurrency(equipo.precioDia)} por dia',
+                    style: GoogleFonts.quicksand(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  const Text('Precio unitario', style: TextStyle(color: AppColors.textSecondary)),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-                    child: const Text('\$40', style: TextStyle(color: AppColors.textPrimary)),
-                  ),
-                  SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Valor total de reserva', style: TextStyle(color: AppColors.textSecondary)),
-                      const Text('\$40.00', style: TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  SizedBox(height: 40),
+                  const SizedBox(height: 12),
                   SizedBox(
-                    width: double.infinity,
-                    height: 50,
+                    height: 42,
                     child: ElevatedButton(
-                      onPressed: () => context.go('/home'),
-                      child: const Text('Confirmar reserva', style: TextStyle(fontSize: 16)),
+                      onPressed: onTap,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      ),
+                      child: const Text('Ver detalles'),
                     ),
                   ),
                 ],
@@ -1265,17 +1225,1029 @@ class ConfirmacionScreen extends StatelessWidget {
   }
 }
 
-/// -------------------- FORO --------------------
+class _HeroPill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  const _HeroPill({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _CategoryChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.chipSelected : AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+          boxShadow: selected ? AppShadows.soft : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+              size: 18,
+              color: selected ? AppColors.primary : AppColors.accent,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EquipmentCard extends StatelessWidget {
+  final Equipo equipo;
+  final VoidCallback onTap;
+  const _EquipmentCard({required this.equipo, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 190,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.soft,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: SizedBox(
+                height: 110,
+                width: double.infinity,
+                child: equipo.imagenes.isNotEmpty
+                    ? Image.asset(
+                        equipo.imagenes.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            Container(color: AppColors.surfaceMuted, child: const Icon(Icons.image, color: AppColors.textMuted)),
+                      )
+                    : Container(
+                        color: AppColors.surfaceMuted,
+                        child: const Icon(Icons.image, color: AppColors.textMuted),
+                      ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      equipo.nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${formatCurrency(equipo.precioDia)} / dia',
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: equipo.tags.take(2).map((tag) => _CardTag(label: tag)).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 18, color: AppColors.secondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          equipo.rating.toStringAsFixed(1),
+                          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('(${equipo.reviews})', style: AppTypography.caption),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardTag extends StatelessWidget {
+  final String label;
+  const _CardTag({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.caption.copyWith(color: AppColors.accent),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String actionLabel;
+  final VoidCallback onTap;
+  const _SectionHeader({required this.title, required this.actionLabel, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        TextButton(onPressed: onTap, child: Text(actionLabel)),
+      ],
+    );
+  }
+}
+
+class _EmptyListMessage extends StatelessWidget {
+  final String text;
+  const _EmptyListMessage({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(text, textAlign: TextAlign.center, style: AppTypography.body),
+    );
+  }
+}
+class MisReservasScreen extends StatefulWidget {
+  const MisReservasScreen({super.key});
+
+  @override
+  State<MisReservasScreen> createState() => _MisReservasScreenState();
+}
+
+class _MisReservasScreenState extends State<MisReservasScreen> {
+  bool loading = true;
+  List<Reserva> reservas = [];
+  List<Equipo> equipos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final user = AppStore.instance.currentUser;
+    if (user == null) {
+      if (mounted) context.go('/');
+      return;
+    }
+    reservas = await AppStore.instance.getReservasByUser(user.uid);
+    equipos = await AppStore.instance.getEquipos();
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mis reservas'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : reservas.isEmpty
+              ? const Center(child: _EmptyListMessage(text: 'Aun no tienes reservas activas.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                  itemCount: reservas.length,
+                  itemBuilder: (context, index) {
+                    final reserva = reservas[index];
+                    final equipo = equipos.firstWhere((e) => e.id == reserva.equipoId, orElse: () {
+                      return Equipo(
+                        id: reserva.equipoId,
+                        nombre: 'Equipo',
+                        descripcion: '',
+                        precioDia: 0,
+                        categoria: '',
+                        imagenes: const [],
+                        disponible: false,
+                        rating: 0,
+                        reviews: 0,
+                        tags: const [],
+                      );
+                    });
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: AppShadows.soft,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: SizedBox(
+                                  height: 72,
+                                  width: 72,
+                                  child: equipo.imagenes.isNotEmpty
+                                      ? Image.asset(
+                                          equipo.imagenes.first,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
+                                        )
+                                      : Container(color: AppColors.surfaceMuted),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      equipo.nombre,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 18,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text('Estado: ${reserva.estado}', style: AppTypography.subtitle),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _InfoColumn(title: 'Desde', value: formatDate(reserva.inicio)),
+                              _InfoColumn(title: 'Hasta', value: formatDate(reserva.fin)),
+                              _InfoColumn(title: 'Total', value: formatCurrency(reserva.totalCOP), highlight: true),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+      bottomNavigationBar: AuroraNavBar(
+        currentIndex: 1,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 2) context.go('/foro');
+        },
+      ),
+    );
+  }
+}
+
+class _InfoColumn extends StatelessWidget {
+  final String title;
+  final String value;
+  final bool highlight;
+  const _InfoColumn({required this.title, required this.value, this.highlight = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppTypography.caption),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: highlight ? AppColors.primary : AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DetailScreen extends StatefulWidget {
+  final String id;
+  const DetailScreen({super.key, required this.id});
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  Equipo? equipo;
+  DateTime? fechaInicio;
+  DateTime? fechaFin;
+  int cantidad = 1;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final equipos = await AppStore.instance.getEquipos();
+    equipo = equipos.firstWhere((e) => e.id == widget.id);
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final now = DateTime.now();
+    final initial = isStart ? (fechaInicio ?? now) : (fechaFin ?? fechaInicio ?? now);
+    final firstDate = isStart ? now : (fechaInicio ?? now);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: firstDate,
+      lastDate: now.add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(data: Theme.of(context).copyWith(colorScheme: Theme.of(context).colorScheme), child: child!);
+      },
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        fechaInicio = picked;
+        if (fechaFin != null && fechaFin!.isBefore(picked)) {
+          fechaFin = picked;
+        }
+      } else {
+        fechaFin = picked;
+      }
+    });
+  }
+
+  Future<void> _reservar() async {
+    if (equipo == null || fechaInicio == null || fechaFin == null) return;
+    final user = AppStore.instance.currentUser!;
+    final dias = fechaFin!.difference(fechaInicio!).inDays + 1;
+    final total = dias * equipo!.precioDia * cantidad;
+    final reserva = Reserva(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      equipoId: equipo!.id,
+      usuarioId: user.uid,
+      inicio: fechaInicio!,
+      fin: fechaFin!,
+      estado: 'pendiente',
+      totalCOP: total,
+    );
+    await AppStore.instance.addReserva(reserva);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reserva creada')),
+    );
+    context.go('/confirmacion');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final e = equipo!;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Column(
+              children: [
+                _DetailHeroImage(equipo: e),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: AppShadows.soft,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  _StatusChip(
+                                    label: e.disponible ? 'Disponible' : 'No disponible',
+                                    color: e.disponible ? AppColors.success : AppColors.danger,
+                                    background: e.disponible
+                                        ? AppColors.success.withOpacity(0.12)
+                                        : AppColors.danger.withOpacity(0.12),
+                                  ),
+                                  _StatusChip(
+                                    label: '${e.rating.toStringAsFixed(1)} | ${e.reviews} resenas',
+                                    color: AppColors.accent,
+                                    background: AppColors.surfaceMuted,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              Text(e.nombre, style: AppTypography.headline),
+                              const SizedBox(height: 8),
+                              Text(
+                                formatCurrency(e.precioDia) + ' por dia',
+                                style: AppTypography.subtitle,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(e.descripcion, style: AppTypography.body),
+                              const SizedBox(height: 20),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: e.tags
+                                    .map((tag) => Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.chip,
+                                            borderRadius: BorderRadius.circular(24),
+                                          ),
+                                          child: Text(tag, style: AppTypography.caption),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: AppShadows.soft,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Reserva tu periodo', style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Selecciona fechas para estimar el total. Precio base: ${formatCurrency(e.precioDia)} por dia.',
+                                style: AppTypography.body,
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _DateSelector(
+                                      label: 'Inicio',
+                                      value: fechaInicio == null ? 'Seleccionar' : formatDate(fechaInicio!),
+                                      onTap: () => _pickDate(isStart: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _DateSelector(
+                                      label: 'Fin',
+                                      value: fechaFin == null ? 'Seleccionar' : formatDate(fechaFin!),
+                                      onTap: fechaInicio == null ? null : () => _pickDate(isStart: false),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Text('Cantidad', style: GoogleFonts.quicksand(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                  const SizedBox(width: 12),
+                                  _QuantitySelector(
+                                    value: cantidad,
+                                    onChanged: (value) => setState(() => cantidad = value),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    'Subtotal: ${formatCurrency(e.precioDia * cantidad)}',
+                                    style: GoogleFonts.quicksand(fontWeight: FontWeight.w600, color: AppColors.primaryDark),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        const _AuroraSectionHeading(title: 'Specs destacadas'),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DetailInfoCard(
+                                icon: Icons.bolt_outlined,
+                                title: 'Tecnologia',
+                                description: 'Compatibilidad Rekordbox y Serato con modo stems.',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _DetailInfoCard(
+                                icon: Icons.settings_input_component,
+                                title: 'Conectividad',
+                                description: '4 canales, 2x USB-C y salidas balanceadas XLR.',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        const _AuroraSectionHeading(title: 'Recordatorios de logistica'),
+                        const SizedBox(height: 16),
+                        const _DetailLogisticsCard(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  _CircleIconButton(
+                    icon: Icons.arrow_back,
+                    onPressed: () => context.go('/home'),
+                  ),
+                  const Spacer(),
+                  _CircleIconButton(
+                    icon: Icons.favorite_border,
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: ElevatedButton(
+              onPressed: (fechaInicio != null && fechaFin != null) ? _reservar : null,
+              child: Text('Confirmar reserva por ${formatCurrency(e.precioDia * cantidad)}'),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: AuroraNavBar(
+        currentIndex: 0,
+        onTap: (index) {
+          if (index == 1) context.go('/mis-reservas');
+          if (index == 2) context.go('/foro');
+        },
+      ),
+    );
+  }
+}
+
+class _DetailHeroImage extends StatelessWidget {
+  final Equipo equipo;
+  const _DetailHeroImage({required this.equipo});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 260,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: equipo.imagenes.isNotEmpty
+                ? Image.asset(
+                    equipo.imagenes.first,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceMuted),
+                  )
+                : Container(color: AppColors.surfaceMuted),
+          ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.black.withOpacity(0.35), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    equipo.categoria.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  equipo.nombre,
+                  style: GoogleFonts.quicksand(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    shadows: const [Shadow(color: Colors.black54, blurRadius: 6)],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      '${formatCurrency(equipo.precioDia)} por dia',
+                      style: GoogleFonts.quicksand(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.star_rounded, size: 18, color: AppColors.secondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${equipo.rating.toStringAsFixed(1)} (${equipo.reviews})',
+                      style: GoogleFonts.quicksand(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateSelector extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  const _DateSelector({required this.label, required this.value, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: AppTypography.caption),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: onTap == null ? AppColors.textMuted : AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuantitySelector extends StatelessWidget {
+  final int value;
+  final ValueChanged<int> onChanged;
+  const _QuantitySelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.remove),
+            onPressed: value > 1 ? () => onChanged(value - 1) : null,
+          ),
+          Text('$value', style: const TextStyle(fontWeight: FontWeight.w700)),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: value < 10 ? () => onChanged(value + 1) : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color background;
+  const _StatusChip({required this.label, required this.color, required this.background});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.quicksand(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _AuroraSectionHeading extends StatelessWidget {
+  final String title;
+  const _AuroraSectionHeading({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+    );
+  }
+}
+
+class _DetailInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  const _DetailInfoCard({required this.icon, required this.title, required this.description});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: GoogleFonts.quicksand(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(description, style: AppTypography.body),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailLogisticsCard extends StatelessWidget {
+  const _DetailLogisticsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      _LogisticsRow(
+        icon: Icons.inbox_outlined,
+        title: 'Incluye',
+        description: 'Cableado de poder, flight case y soporte tecnico en sitio.',
+      ),
+      _LogisticsRow(
+        icon: Icons.access_time,
+        title: 'Ventana de montaje',
+        description: 'Dos horas antes del evento (puede ampliarse segun disponibilidad).',
+      ),
+      _LogisticsRow(
+        icon: Icons.local_shipping_outlined,
+        title: 'Cobertura',
+        description: 'Envigado, Medellin e Itagui con costo de transporte adicional.',
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(items[i].icon, color: AppColors.accent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        items[i].title,
+                        style: GoogleFonts.quicksand(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(items[i].description, style: AppTypography.body),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (i != items.length - 1) ...[
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.border),
+              const SizedBox(height: 16),
+            ],
+          ],
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: () {},
+            child: const Text('Ver experiencias de otros crews en la comunidad'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogisticsRow {
+  final IconData icon;
+  final String title;
+  final String description;
+  const _LogisticsRow({required this.icon, required this.title, required this.description});
+}
+
+class ConfirmacionScreen extends StatelessWidget {
+  const ConfirmacionScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconButton(
+                onPressed: () => context.go('/home'),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(height: 16),
+              Text('Reserva confirmada', style: AppTypography.headline),
+              const SizedBox(height: 8),
+              Text(
+                'Tu solicitud fue enviada. Nuestro equipo revisara disponibilidad y se comunicara contigo.',
+                style: AppTypography.body,
+              ),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: AppShadows.soft,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _InfoColumn(title: 'Estado', value: 'Pendiente de confirmacion'),
+                    SizedBox(height: 12),
+                    _InfoColumn(title: 'Revisa tus reservas', value: 'Panel -> Reservas'),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: () => context.go('/mis-reservas'),
+                child: const Text('Ir a mis reservas'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ForoScreen extends StatefulWidget {
   const ForoScreen({super.key});
-  @override State<ForoScreen> createState() => _ForoScreenState();
+
+  @override
+  State<ForoScreen> createState() => _ForoScreenState();
 }
 
 class _ForoScreenState extends State<ForoScreen> {
-  final txtCtrl = TextEditingController();
-  List<Comentario> comentarios = [];
+  final TextEditingController textoCtrl = TextEditingController();
   List<Equipo> equipos = [];
-  String? equipoSeleccionadoId;
+  List<Comentario> comentarios = [];
+  String? equipoSeleccionado;
+  bool loading = true;
 
   @override
   void initState() {
@@ -1286,206 +2258,200 @@ class _ForoScreenState extends State<ForoScreen> {
   Future<void> _load() async {
     equipos = await AppStore.instance.getEquipos();
     if (equipos.isNotEmpty) {
-      equipoSeleccionadoId = equipos.first.id;
-      comentarios = await AppStore.instance.getComentarios(equipoSeleccionadoId!);
+      equipoSeleccionado = equipos.first.id;
+      comentarios = await AppStore.instance.getComentarios(equipoSeleccionado!);
     }
-    setState(() {});
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _changeEquipo(String id) async {
+    equipoSeleccionado = id;
+    comentarios = await AppStore.instance.getComentarios(id);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _send() async {
+    if (textoCtrl.text.trim().isEmpty || equipoSeleccionado == null) return;
+    final user = AppStore.instance.currentUser!;
+    final comentario = Comentario(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      equipoId: equipoSeleccionado!,
+      usuarioId: user.nombre,
+      texto: textoCtrl.text.trim(),
+      createdAt: DateTime.now(),
+    );
+    await AppStore.instance.addComentario(comentario);
+    textoCtrl.clear();
+    await _changeEquipo(equipoSeleccionado!);
+  }
+
+  @override
+  void dispose() {
+    textoCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = AppStore.instance.currentUser!;
-    final equipoActual = equipos.isNotEmpty && equipoSeleccionadoId != null
-        ? equipos.firstWhere((e) => e.id == equipoSeleccionadoId)
-        : null;
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: const Text('Foro'),
+        title: const Text('Comunidad'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/home'),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (equipos.isNotEmpty)
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Selecciona un producto', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: DropdownButton<String>(
-                      value: equipoSeleccionadoId,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      items: equipos.map((e) {
-                        return DropdownMenuItem(
-                          value: e.id,
-                          child: Text(e.nombre),
-                        );
-                      }).toList(),
-                      onChanged: (val) async {
-                        setState(() => equipoSeleccionadoId = val);
-                        comentarios = await AppStore.instance.getComentarios(val!);
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (equipoActual != null)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Escribe tu comentario sobre ${equipoActual.nombre}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  SizedBox(height: 8),
-                  Container(
-                    height: 120,
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: TextField(
-                      controller: txtCtrl,
-                      maxLines: 5,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Tu opinión sobre este producto...',
-                        hintStyle: const TextStyle(color: AppColors.textMuted),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (txtCtrl.text.trim().isNotEmpty && equipoSeleccionadoId != null) {
-                          final c = Comentario(
-                            id: DateTime.now().toString(),
-                            equipoId: equipoSeleccionadoId!,
-                            usuarioId: user.uid,
-                            texto: txtCtrl.text.trim(),
-                            createdAt: DateTime.now(),
-                          );
-                          await AppStore.instance.addComentario(c);
-                          comentarios = await AppStore.instance.getComentarios(equipoSeleccionadoId!);
-                          txtCtrl.clear();
-                          setState(() {});
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Enviar comentario', style: TextStyle(fontSize: 15)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const Text('Comentarios', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
-          ),
-          SizedBox(height: 12),
-          Expanded(
-            child: comentarios.isEmpty
-                ? Center(
-                    child: const Text('No hay comentarios aún', style: TextStyle(color: AppColors.textMuted)),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: comentarios.length,
-                    itemBuilder: (_, i) {
-                      final c = comentarios[i];
-                      final equipo = equipos.firstWhere((e) => e.id == c.equipoId, orElse: () => Equipo(id: '', nombre: 'Producto', descripcion: '', precioDia: 0, categoria: '', imagenes: [], disponible: false));
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 12),
-                        padding: EdgeInsets.all(12),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Comparte feedback o escenas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(24),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: equipo.imagenes.isNotEmpty
-                                  ? Image.asset(
-                                      equipo.imagenes[0],
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(width: 50, height: 50, color: AppColors.surfaceMuted),
-                                    )
-                                  : Container(width: 50, height: 50, color: AppColors.surfaceMuted),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
+                        child: DropdownButton<String>(
+                          value: equipoSeleccionado,
+                          isExpanded: true,
+                          underline: const SizedBox.shrink(),
+                          borderRadius: BorderRadius.circular(16),
+                          items: equipos
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e.id,
+                                  child: Text(e.nombre),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              _changeEquipo(value);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: textoCtrl,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          hintText: 'Describe tu montaje, escenas o notas clave',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _send,
+                        child: const Text('Compartir al foro'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: comentarios.isEmpty
+                      ? const Center(child: _EmptyListMessage(text: 'Aun no hay comentarios.'))
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                          itemCount: comentarios.length,
+                          itemBuilder: (context, index) {
+                            final comentario = comentarios[index];
+                            final equipo = equipos.firstWhere((e) => e.id == comentario.equipoId, orElse: () {
+                              return Equipo(
+                                id: comentario.equipoId,
+                                nombre: 'Equipo',
+                                descripcion: '',
+                                precioDia: 0,
+                                categoria: '',
+                                imagenes: const [],
+                                disponible: false,
+                                rating: 0,
+                                reviews: 0,
+                                tags: const [],
+                              );
+                            });
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: AppColors.border),
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Text(equipo.nombre, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 8),
+                                  Text(comentario.texto, style: AppTypography.body),
+                                  const SizedBox(height: 12),
                                   Text(
-                                    equipo.nombre,
-                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 6),
-                                  Text(c.texto, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    '${c.usuarioId} • ${DateFormat('dd/MM/yyyy HH:mm').format(c.createdAt)}',
-                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                    '${comentario.usuarioId} - ${DateFormat('dd MMM yyyy - HH:mm').format(comentario.createdAt)}',
+                                    style: AppTypography.caption,
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
+                ),
+              ],
+            ),
+      bottomNavigationBar: AuroraNavBar(
         currentIndex: 2,
-        onTap: (i) {
-          if (i == 0) context.go('/home');
-          if (i == 1) context.go('/mis-reservas');
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/mis-reservas');
         },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.event_note), label: 'Mis Reservas'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'foro'),
-        ],
+      ),
+    );
+  }
+}
+
+class AuroraNavBar extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  const AuroraNavBar({super.key, required this.currentIndex, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: AppShadows.soft,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: AppColors.textMuted,
+            selectedIconTheme: const IconThemeData(color: AppColors.primary),
+            unselectedIconTheme: const IconThemeData(color: AppColors.textMuted),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            currentIndex: currentIndex,
+            onTap: onTap,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Panel'),
+              BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Reservas'),
+              BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Comunidad'),
+            ],
+          ),
+        ),
       ),
     );
   }

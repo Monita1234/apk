@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "465048864139",
+    "firebase_url": "https://gearbeat-mvp-default-rtdb.firebaseio.com",
+    "project_id": "gearbeat-mvp",
+    "storage_bucket": "gearbeat-mvp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465048864139:android:646b201d0716688aa91b8e",
+        "android_client_info": {
+          "package_name": "com.example.app_preserie_dj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_GrmS6yuLEovRoS1S1JGMk7-poqGDnFo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465048864139:android:94f27bcdcac82a51a91b8e",
+        "android_client_info": {
+          "package_name": "com.example.gearbeat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_GrmS6yuLEovRoS1S1JGMk7-poqGDnFo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
