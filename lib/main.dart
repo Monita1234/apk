@@ -1598,6 +1598,14 @@ class _InfoColumn extends StatelessWidget {
   }
 }
 
+
+
+
+
+
+
+
+
 class DetailScreen extends StatefulWidget {
   final String id;
   const DetailScreen({super.key, required this.id});
@@ -1679,203 +1687,231 @@ class _DetailScreenState extends State<DetailScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final e = equipo!;
+
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Column(
-              children: [
-                _DetailHeroImage(equipo: e),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
+          onPressed: () => context.go('/home'),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: AppColors.textSecondary),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // FOTO / HERO
+            _DetailHeroImage(equipo: e),
+
+            // CONTENIDO SCROLLEABLE
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 120), // deja espacio para el botón inferior
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
+                    // CARD PRINCIPAL
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: AppShadows.soft,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              _StatusChip(
+                                label: e.disponible ? 'Disponible' : 'No disponible',
+                                color: e.disponible ? AppColors.success : AppColors.danger,
+                                background: e.disponible
+                                    ? AppColors.success.withOpacity(0.12)
+                                    : AppColors.danger.withOpacity(0.12),
+                              ),
+                              _StatusChip(
+                                label: '${e.rating.toStringAsFixed(1)} | ${e.reviews} resenas',
+                                color: AppColors.accent,
+                                background: AppColors.surfaceMuted,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Text(e.nombre, style: AppTypography.headline),
+                          const SizedBox(height: 8),
+                          Text('${formatCurrency(e.precioDia)} por dia', style: AppTypography.subtitle),
+                          const SizedBox(height: 16),
+                          Text(e.descripcion, style: AppTypography.body),
+                          const SizedBox(height: 20),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: e.tags
+                                .map((tag) => Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.chip,
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: Text(tag, style: AppTypography.caption),
+                                    ))
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+                    // CARD RESERVA
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: AppShadows.soft,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Reserva tu periodo',
+                              style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Selecciona fechas para estimar el total. Precio base: ${formatCurrency(e.precioDia)} por dia.',
+                            style: AppTypography.body,
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _DateSelector(
+                                  label: 'Inicio',
+                                  value: fechaInicio == null ? 'Seleccionar' : formatDate(fechaInicio!),
+                                  onTap: () => _pickDate(isStart: true),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _DateSelector(
+                                  label: 'Fin',
+                                  value: fechaFin == null ? 'Seleccionar' : formatDate(fechaFin!),
+                                  onTap: fechaInicio == null ? null : () => _pickDate(isStart: false),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Text('Cantidad',
+                                  style: GoogleFonts.quicksand(
+                                      fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              const SizedBox(width: 12),
+                              _QuantitySelector(
+                                value: cantidad,
+                                onChanged: (value) => setState(() => cantidad = value),
+                              ),
+                              const Spacer(),
+                              Text(
+                                'Subtotal: ${formatCurrency(e.precioDia * cantidad)}',
+                                style: GoogleFonts.quicksand(
+                                    fontWeight: FontWeight.w600, color: AppColors.primaryDark),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+                    const _AuroraSectionHeading(title: 'Specs destacadas'),
+                    const SizedBox(height: 16),
+                    Row(
                       children: [
-                        const SizedBox(height: 24),
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(32),
-                            boxShadow: AppShadows.soft,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: [
-                                  _StatusChip(
-                                    label: e.disponible ? 'Disponible' : 'No disponible',
-                                    color: e.disponible ? AppColors.success : AppColors.danger,
-                                    background: e.disponible
-                                        ? AppColors.success.withOpacity(0.12)
-                                        : AppColors.danger.withOpacity(0.12),
-                                  ),
-                                  _StatusChip(
-                                    label: '${e.rating.toStringAsFixed(1)} | ${e.reviews} resenas',
-                                    color: AppColors.accent,
-                                    background: AppColors.surfaceMuted,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              Text(e.nombre, style: AppTypography.headline),
-                              const SizedBox(height: 8),
-                              Text(
-                                formatCurrency(e.precioDia) + ' por dia',
-                                style: AppTypography.subtitle,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(e.descripcion, style: AppTypography.body),
-                              const SizedBox(height: 20),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: e.tags
-                                    .map((tag) => Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.chip,
-                                            borderRadius: BorderRadius.circular(24),
-                                          ),
-                                          child: Text(tag, style: AppTypography.caption),
-                                        ))
-                                    .toList(),
-                              ),
-                            ],
+                        Expanded(
+                          child: _DetailInfoCard(
+                            icon: Icons.bolt_outlined,
+                            title: 'Tecnologia',
+                            description: 'Compatibilidad Rekordbox y Serato con modo stems.',
                           ),
                         ),
-                        const SizedBox(height: 28),
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(32),
-                            boxShadow: AppShadows.soft,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Reserva tu periodo', style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Selecciona fechas para estimar el total. Precio base: ${formatCurrency(e.precioDia)} por dia.',
-                                style: AppTypography.body,
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _DateSelector(
-                                      label: 'Inicio',
-                                      value: fechaInicio == null ? 'Seleccionar' : formatDate(fechaInicio!),
-                                      onTap: () => _pickDate(isStart: true),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _DateSelector(
-                                      label: 'Fin',
-                                      value: fechaFin == null ? 'Seleccionar' : formatDate(fechaFin!),
-                                      onTap: fechaInicio == null ? null : () => _pickDate(isStart: false),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Text('Cantidad', style: GoogleFonts.quicksand(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                                  const SizedBox(width: 12),
-                                  _QuantitySelector(
-                                    value: cantidad,
-                                    onChanged: (value) => setState(() => cantidad = value),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'Subtotal: ${formatCurrency(e.precioDia * cantidad)}',
-                                    style: GoogleFonts.quicksand(fontWeight: FontWeight.w600, color: AppColors.primaryDark),
-                                  ),
-                                ],
-                              ),
-                            ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _DetailInfoCard(
+                            icon: Icons.settings_input_component,
+                            title: 'Conectividad',
+                            description: '4 canales, 2x USB-C y salidas balanceadas XLR.',
                           ),
                         ),
-                        const SizedBox(height: 28),
-                        const _AuroraSectionHeading(title: 'Specs destacadas'),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _DetailInfoCard(
-                                icon: Icons.bolt_outlined,
-                                title: 'Tecnologia',
-                                description: 'Compatibilidad Rekordbox y Serato con modo stems.',
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _DetailInfoCard(
-                                icon: Icons.settings_input_component,
-                                title: 'Conectividad',
-                                description: '4 canales, 2x USB-C y salidas balanceadas XLR.',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                        const _AuroraSectionHeading(title: 'Recordatorios de logistica'),
-                        const SizedBox(height: 16),
-                        const _DetailLogisticsCard(),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 28),
+                    const _AuroraSectionHeading(title: 'Recordatorios de logistica'),
+                    const SizedBox(height: 16),
+                    const _DetailLogisticsCard(),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  _CircleIconButton(
-                    icon: Icons.arrow_back,
-                    onPressed: () => context.go('/home'),
-                  ),
-                  const Spacer(),
-                  _CircleIconButton(
-                    icon: Icons.favorite_border,
-                    onPressed: () {},
-                  ),
-                ],
               ),
             ),
-          ),
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 24,
+          ],
+        ),
+      ),
+
+      // ✅ Botón inferior correcto (sin AuroraNavBar en esta pantalla)
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: SizedBox(
+            width: double.infinity,
             child: ElevatedButton(
               onPressed: (fechaInicio != null && fechaFin != null) ? _reservar : null,
               child: Text('Confirmar reserva por ${formatCurrency(e.precioDia * cantidad)}'),
             ),
           ),
-        ],
-      ),
-      bottomNavigationBar: AuroraNavBar(
-        currentIndex: 0,
-        onTap: (index) {
-          if (index == 1) context.go('/mis-reservas');
-          if (index == 2) context.go('/foro');
-        },
+        ),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class _DetailHeroImage extends StatelessWidget {
   final Equipo equipo;
